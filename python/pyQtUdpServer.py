@@ -3,7 +3,7 @@ import numpy as np
 import pyqtgraph as pg
 # from pyqtgraph.Qt import QtCore, QtWidgets
 from PyQt6 import QtNetwork, QtWidgets
-
+from datetime import datetime
 
 # bind all IP
 HOST = '0.0.0.0'
@@ -17,6 +17,15 @@ COLORS = ("r","g","b")
 # Create a TCP/IP socket
 socket = QtNetwork.QUdpSocket()
 
+
+def save_data(self):
+    global data_a, data_g
+    T_mat = np.array([data_a[0], data_a[1], data_a[2],
+                      data_g[0], data_g[2], data_g[2]])
+    filename = f"Imu_data{datetime.now():%Y-%m-%d_%H-%M-%S}.csv"
+    np.savetxt(filename, T_mat.T, delimiter=",")
+
+
 # Always start by initializing Qt (only once per application)
 app = QtWidgets.QApplication([])
 
@@ -24,8 +33,11 @@ app = QtWidgets.QApplication([])
 w = QtWidgets.QWidget()
 w.setWindowTitle('M5Stick IMU Data')
 
+
+
 # Create some widgets to be placed inside
-btn = QtWidgets.QPushButton('press me')
+btn = QtWidgets.QPushButton('Save Data')
+btn.clicked.connect(save_data)
 text = QtWidgets.QLineEdit('enter text')
 # listWidget = QtWidgets.QListWidget()
 plota = pg.PlotWidget()
@@ -50,6 +62,7 @@ for i in range(N_AXIS):
     curve_a.append(plota.plot(data_a[i], pen=COLORS[i]))
     curve_g.append(plotg.plot(data_g[i], pen=COLORS[i]))
 ptr1 = 0
+
 
 
 def process_datagrams():

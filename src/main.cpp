@@ -4,7 +4,7 @@
  * @brief
  * @version 0.1
  * @date 2023-05-25
- *
+*  https://docs.m5stack.com/en/core/M5StickC%20PLUS2*
  * @copyright Copyright (c) 2023
  * https://randomnerdtutorials.com/esp32-http-get-post-arduino/
  *
@@ -38,6 +38,8 @@ String serverName = "http://epics.ipfn.tecnico.ulisboa.pt/udp-server";
 const int samplePeriod = 20;
 const int printPeriod = 1000;
 const int lcdPeriod = 100;
+
+const uint8_t IR_SEND_PIN = 19;
 
 String serverUdp;
                                              //
@@ -83,7 +85,10 @@ void setup()
     gpio_reset_pin((gpio_num_t)POWER_HOLD_PIN);
     pinMode(POWER_HOLD_PIN, OUTPUT);
     digitalWrite(POWER_HOLD_PIN, HIGH);
+//    pinMode(IR_SEND_PIN, OUTPUT);
+//    digitalWrite(IR_SEND_PIN, HIGH);
     // For IMU
+    lcd_device.setup();
 
     Serial.begin(115200);
     // connecting to a WiFi network
@@ -108,7 +113,6 @@ void setup()
     }
     delay(100);
 
-    lcd_device.setup();
     imu_device.setup();
 }
 
@@ -118,7 +122,7 @@ void loop()
     static unsigned long nextItime = 1000;
     static unsigned long nextLcdtime = 2000;
     static unsigned bufferWrt = 0;
-    static unsigned buffer = 0;
+    static unsigned bufferRd = 0;
     static unsigned sample = 0;
 
     unsigned long time_dt[2];
@@ -126,18 +130,22 @@ void loop()
     if ( now_ms > nextStime ) {
         nextStime = now_ms + printPeriod;
         //Serial.println("IMU ");
-        printf("%f \t %f \t %f\n", imu_data[buffer][sample].accel_x, imu_data[buffer][sample].accel_y, imu_data[buffer][sample].accel_z);
+        printf("%f \t %f \t %f\n", imu_data[bufferRd][sample].accel_x, imu_data[bufferRd][sample].accel_y, imu_data[bufferRd][sample].accel_z);
         //Check WiFi connection status
         if(WiFi.status()== WL_CONNECTED){
         //This initializes udp and transfer buffer
             time_dt[0] = now_ms;
             time_dt[1] = 1;
-            udp.beginPacket(udpServer, udpPort);
+            udp.beginPacket(serverUdp.c_str(), udpPort);
             //udp.write(buffer, 11);
             udp.write((uint8_t *) time_dt, 8);
             //udp.write((uint8_t *) data.value, packetSize);
-            udp.write((uint8_t *) &imu_data[buffer][0], sampleSize);
-            udp.write((uint8_t *) &imu_data[buffer][1], sampleSize);
+            udp.write((uint8_t *) &imu_data[bufferRd][0], sampleSize);
+            udp.write((uint8_t *) &imu_data[bufferRd][1], sampleSize);
+            if(bufferRd == 0)
+                bufferRd = 1;
+            else
+                bufferRd = 0;
             udp.endPacket();
         }
         else {
@@ -165,6 +173,7 @@ void loop()
         lcd_device.draw_accel(imu_data[0][0].accel_x,
                 imu_data[0][0].accel_y,
                 imu_data[0][0].accel_z);
+        //checkReboot();
     }
 
 }

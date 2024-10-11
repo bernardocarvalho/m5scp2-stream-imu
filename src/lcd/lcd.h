@@ -120,6 +120,7 @@ namespace imuStream
         void waitNext();
         bool checkNext();
         void checkReboot();
+        void checkPowerOff();
 
         double theta, last_theta;
         double phi, last_phi;

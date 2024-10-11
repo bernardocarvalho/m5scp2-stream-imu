@@ -318,6 +318,30 @@ color_r = (color_r > 2) ? color_r - 1.0625 : 0U;
         printf("go next\n");
     }
 
+     void LCD::checkPowerOff()
+    {
+   /* Long press power off */
+        if (!btnPWR.read())
+        {
+            _tone(3500, 50);
+
+            uint32_t time_count = millis();
+
+            while (!btnPWR.read())
+            {
+
+                display->setCursor(0, 10);
+                display->setFont(&fonts::Font0);
+                display->setTextSize(2);
+                display->setTextColor(TFT_YELLOW, TFT_BLACK);
+                display->printf(" PWR OFF IN %d/3\n", (millis() - time_count) / 1000 + 1);
+                displayUpdate();
+
+                delay(10);
+            }
+        }
+    }
+
      void LCD::checkReboot()
     {
    /* Long press power off */
@@ -465,6 +489,7 @@ color_r = (color_r > 2) ? color_r - 1.0625 : 0U;
         Displaybuff();
         last_theta = theta;
         last_phi = phi;
-
+        
+        checkPowerOff();
     }
 }
