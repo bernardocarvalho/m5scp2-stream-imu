@@ -29,21 +29,19 @@ const char* ssid2     = "Vodafone-C850D2"; // Change this to your WiFi SSID
 const char* password2 = "Guiga+Tiz"; // Change this to your WiFi password
 const char* udpServer = "192.168.63.231"; // Change this to your Server's IP
 const int udpPort = 44444;
-const int nSamples = 2;
-const int packetSize = 3 * 2 * nSamples * 4; // 6-axis imuStream
-const int sampleSize = 3 * 2 * 4; // 6-axis imuStream
+const int sampleSize = 2 * 3 * 4; // 6-axis imuStream
 //Your Domain name with URL path or IP address with path
 String serverName = "http://epics.ipfn.tecnico.ulisboa.pt/udp-server";
 
-const int samplePeriod = 20;
-const int printPeriod = 1000;
+const int printPeriod = 100;
+const int nSamples = 10;
 const int lcdPeriod = 100;
+const int samplePeriod = lcdPeriod / nSamples;
 
-const uint8_t IR_SEND_PIN = 19;
+// const uint8_t IR_SEND_PIN = 19;
 
 String serverUdp;
                                              //
-//imuStream::TEST imu_device;
 imuStream::LCD lcd_device;
 imuStream::IMU imu_device;
 
@@ -94,7 +92,7 @@ void setup()
     // connecting to a WiFi network
     WiFiMulti.addAP(ssid0, password0);
     WiFiMulti.addAP(ssid, password);
-    //WiFiMulti.addAP(ssid2, password2);
+    WiFiMulti.addAP(ssid2, password2);
     Serial.print("Waiting for WiFi... ");
     for(int i = 0; i < WIFI_RETRIES; i++) {
         if(WiFiMulti.run() != WL_CONNECTED) {
@@ -111,15 +109,14 @@ void setup()
             break;
         }
     }
-    delay(100);
-
     imu_device.setup();
+    delay(2000);
 }
 
 void loop()
 {
-    static unsigned long nextStime = 0;
-    static unsigned long nextItime = 1000;
+    static unsigned long nextUdpTime = printPeriod + 7;
+    static unsigned long nextItime = 0;
     static unsigned long nextLcdtime = 2000;
     static unsigned bufferWrt = 0;
     static unsigned bufferRd = 0;
@@ -127,30 +124,10 @@ void loop()
 
     unsigned long time_dt[2];
     unsigned long now_ms = millis();
-    if ( now_ms > nextStime ) {
-        nextStime = now_ms + printPeriod;
+    if ( now_ms > nextUdpTime ) {
+        nextUdpTime = now_ms + printPeriod;
         //Serial.println("IMU ");
         printf("%f \t %f \t %f\n", imu_data[bufferRd][sample].accel_x, imu_data[bufferRd][sample].accel_y, imu_data[bufferRd][sample].accel_z);
-        //Check WiFi connection status
-        if(WiFi.status()== WL_CONNECTED){
-        //This initializes udp and transfer buffer
-            time_dt[0] = now_ms;
-            time_dt[1] = 1;
-            udp.beginPacket(serverUdp.c_str(), udpPort);
-            //udp.write(buffer, 11);
-            udp.write((uint8_t *) time_dt, 8);
-            //udp.write((uint8_t *) data.value, packetSize);
-            udp.write((uint8_t *) &imu_data[bufferRd][0], sampleSize);
-            udp.write((uint8_t *) &imu_data[bufferRd][1], sampleSize);
-            if(bufferRd == 0)
-                bufferRd = 1;
-            else
-                bufferRd = 0;
-            udp.endPacket();
-        }
-        else {
-            Serial.println("WiFi Disconnected");
-        }
 
     }
     if ( now_ms > nextItime ) {
@@ -173,6 +150,28 @@ void loop()
         lcd_device.draw_accel(imu_data[0][0].accel_x,
                 imu_data[0][0].accel_y,
                 imu_data[0][0].accel_z);
+        //Check WiFi connection status
+        if(WiFi.status()== WL_CONNECTED){
+        //This initializes udp and transfer buffer
+            time_dt[0] = now_ms;
+            time_dt[1] = 1;
+            udp.beginPacket(serverUdp.c_str(), udpPort);
+            //udp.write(buffer, 11);
+            udp.write((uint8_t *) time_dt, 8);
+            //udp.write((uint8_t *) data.value, packetSize);
+            for(int i = 0; i < nSamples; i++) {
+                udp.write((uint8_t *) &imu_data[bufferRd][i], sampleSize);
+                //udp.write((uint8_t *) &imu_data[bufferRd][1], sampleSize);
+            }
+            if(bufferRd == 0)
+                bufferRd = 1;
+            else
+                bufferRd = 0;
+            udp.endPacket();
+        }
+        else {
+            Serial.println("WiFi Disconnected");
+        }
         //checkReboot();
     }
 
